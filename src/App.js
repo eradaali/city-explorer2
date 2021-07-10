@@ -1,117 +1,101 @@
-import React, { Component } from 'react'
-import Button from 'react-bootstrap/Button';
-// import form from 'react-bootstrap/Form';
-import './App.css';
-import 'bootstrap/dist/css/bootstrap.min.css';
+
+
+
+import React from 'react';
 import axios from 'axios';
-import Weather from './Weather'
-import Movie from './Movie'
-
-export class App extends React.Component {
-  constructor (props){
+import CityCard from './components/CityCard';
+import MapModal from './components/MapModal';
+import WeatherCard from './components/WeathCard';
+import MoviesCard from './components/MoviesCard';
+import Header from './Header';
+import Footer from './Footer';
+import ErrorMessage from './components/ErrorMessage';
+import './App.css'
+class App extends React.Component {
+  constructor(props) {
     super(props);
-    this.state={
-      cityData: {},
-      searchQ: '',
+    this.state = {
+      cityInformation: {},
+      cityName: '',
+      WeatherInformation: [],
+      showInformation: false,
       showMap: false,
-      errorMessage: false,
-      weatherData: []  
+      showWeather: false,
+      showError: false,
+      showMovies: false,
+      MoviesInformation: [],
     }
   }
-
-  getData = async (event) =>{
-    event.preventDefault();
+  // This Function used to take the value from the form and render the result
+  exploreCity = async (e) => {
+    e.preventDefault();
     await this.setState({
-      searchQ:event.target.city.value
+      cityName: e.target.city.value.toLowerCase()
     })
-    console.log(this.state.searchQ);
-
-
-    try{
-      let url = `https://eu1.locationiq.com/v1/search.php?key=${process.env.REACT_APP_lOCATION_KEY}&q=${this.state.searchQ}&format=json`;
-      let resData = await axios.get(url);
-      console.log(resData);
-  
-      this.setState({
-        cityData: resData.data[0],
-        showMap: true
-  
-      })
-    }catch{
-      this.setState({
-        errorMessage:true
-      })
-  
-    }
-//hek bdk yes run ok lasho hay el wenha hadi la port 3005 m
-
- //http://localhost:3001/weather?cityName=Amman&lon=35.91&lat=31.95
-
-    let weatherurl = `http://${process.env.REACT_APP_P0RT}/weather?cityName=${this.state.searchQ}`
-    let weatherRequest = await axios.get(weatherurl,{headers: {"Access-Control-Allow-Origin": "http://localhost:3005"}})
-    console.log(this.state.weatherRequest)
-    this.setState({
-      weatherData: weatherRequest.data
+    let url = `https://us1.locationiq.com/v1/search.php?key=${process.env.REACT_APP_LOCATIONIQ_KEY}&q=${this.state.cityName}&format=json`;
+    let responseData = await axios.get(url);
+    await this.setState({
+      cityInformation: responseData.data[0],
+      showInformation: true,
     })
-
-    
-
-    let urlMoive=`${process.env.REACT_APP_P0RT}/movies?cityName=${this.state.searchQ}`
-debugger
-    let accessMoive=await axios.get(urlMoive)
-    
-    await this.setState(
-      {
-      movieData:accessMoive.data
-      // showmovie:true
-    })
-   
+    // This for weather && Movies 
+    this.renderWeather();
+    this.renderMovies();
   }
- 
-
-
+  //Getting Response Fron API
+  renderWeather = async () => {
+    const city = this.state.cityName.charAt(0).toUpperCase() + this.state.cityName.slice(1);
+    let weatherUrl = `https://city-explorer-backend-301d25.herokuapp.com/weatherinfo?cityName=${city}&format=json`;
+    let weatherData = await axios.get(weatherUrl)
+    await this.setState({
+      WeatherInformation: weatherData.data,
+      showWeather: true,
+    })
+  }
+  // Getting Response Fron API
+  renderMovies = async () => {
+    const city = this.state.cityName.charAt(0).toUpperCase() + this.state.cityName.slice(1);
+    let moviesUrl = `https://city-explorer-backend-301d25.herokuapp.com/moviesinfo?cityName=${city}&format=json`;
+    // let moviesUrl = ` http://localhost:3000/moviesinfo?cityName=${city}&format=json`
+    let moviesData = await axios.get(moviesUrl)
+    await this.setState({
+      MoviesInformation: moviesData.data,
+      showMovies: true,
+    })
+  }
+  //  show the map modal
+  showMapModal = async () => {
+    await this.setState({
+      showMap: true,
+    })
+  }
+  handleClose = () => {
+    this.setState({
+      showMap: false,
+    })
+  }
+  // Rendering part
   render() {
     return (
-      <div>
-        <form  onSubmit={this.getData} >
-          <input type='text' placeholder='city name' name='city' />
-          <Button variant="outline-success" type="submit">Explore cities </Button>{' '}
-  
-        </form>
-        
-         
-
-           {
-            this.state.weatherData.map((value,index) => {
-              return (
-                <Weather
-                weatherResult={value} />
-              )
-            })
-          }
-          <>
-           <p>{this.state.cityData.display_name}</p>
-           <p>{this.state.cityData.lat}</p>
-           <p>{this.state.cityData.lon}</p> 
-        </>
-        {this.state.showMap &&
-          <img alt='' src={`https://maps.locationiq.com/v3/staticmap?key=${process.env.REACT_APP_lOCATION_KEY}&center=${this.state.cityData.lat},${this.state.cityData.lon}&zoom=15`} />
-        } 
-
-        
-        <Movie 
-        result={this.state.movieData}
-        
-        />
-        
-        
+      <div className="main" >
+        <div className="form">
+        <Header/>
+        <ErrorMessage/>
+          <form onSubmit={this.exploreCity} >
+            <input type="text" placeholder="Name of the city" name="city" />
+            <button type="submit"> Explore </button>
+          </form>
+        </div>
+        <CityCard cityInformation={this.state.cityInformation} showInformation={this.state.showInformation} showMapModal={this.showMapModal} />
+        <WeatherCard WeatherInformation={this.state.WeatherInformation} showWeather={this.state.showWeather} cityInformation={this.state.cityInformation} renderWeather={this.renderWeather} />
+        {this.state.MoviesInformation.map(movie => {
+          return (
+            <MoviesCard movie={movie} showMovies={true} />
+          )})}
+        <MapModal cityInformation={this.state.cityInformation} showMap={this.state.showMap} handleClose={this.handleClose} />
+        <Footer/>
       </div>
-
-      
     )
   }
 }
-
-export default App
-
-
+export default App;
